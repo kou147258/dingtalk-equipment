@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>物资借用归还管理系统</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; }
+    
+    .header { background: linear-gradient(135deg, #1677ff, #4096ff); color: white; padding: 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header p { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+    
+    .tabs { display: flex; background: white; border-bottom: 1px solid #eee; position: sticky; top: 70px; z-index: 99; }
+    .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; color: #666; cursor: pointer; transition: all 0.3s; }
+    .tab.active { color: #1677ff; border-bottom: 2px solid #1677ff; font-weight: 600; }
+    
+    .content { padding: 16px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    
+    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-title { font-size: 16px; font-weight: 600; color: #333; }
+    .card-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-available { background: #f6ffed; color: #52c41a; }
+    .badge-borrowed { background: #fff7e6; color: #fa8c16; }
+    .badge-damaged { background: #fff2f0; color: #ff4d4f; }
+    .badge-pending { background: #e6f7ff; color: #1677ff; }
+    .badge-approved { background: #f6ffed; color: #52c41a; }
+    .badge-rejected { background: #fff2f0; color: #ff4d4f; }
+    
+    .card-info { font-size: 13px; color: #666; line-height: 1.8; }
+    .card-info span { color: #333; }
+    
+    .card-image { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 8px; }
+    
+    .btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; text-align: center; }
+    .btn-primary { background: linear-gradient(135deg, #1677ff, #4096ff); color: white; }
+    .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-success { background: linear-gradient(135deg, #52c41a, #73d13d); color: white; }
+    .btn-danger { background: linear-gradient(135deg, #ff4d4f, #ff7875); color: white; }
+    .btn-outline { background: white; color: #1677ff; border: 1px solid #1677ff; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-group .btn { flex: 1; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 14px; color: #333; font-weight: 500; margin-bottom: 6px; }
+    .form-label.required::after { content: ' *'; color: #ff4d4f; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 14px; transition: all 0.3s; background: white; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #1677ff; outline: none; box-shadow: 0 0 0 2px rgba(22,119,255,0.1); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .checkbox-item { display: flex; align-items: center; padding: 8px 12px; background: #f5f5f5; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.3s; }
+    .checkbox-item input { display: none; }
+    .checkbox-item.selected { background: #e6f7ff; color: #1677ff; }
+    .checkbox-item.checked { background: #1677ff; color: white; }
+    
+    .file-upload { border: 2px dashed #d9d9d9; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
+    .file-upload:hover { border-color: #1677ff; }
+    .file-upload input { display: none; }
+    .file-upload-preview { max-width: 100%; max-height: 150px; margin-top: 10px; border-radius: 8px; }
+    
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: flex-end; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; border-radius: 16px 16px 0 0; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; transform: translateY(100%); transition: transform 0.3s; }
+    .modal-overlay.active .modal { transform: translateY(0); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close { width: 28px; height: 28px; border-radius: 50%; background: #f5f5f5; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; color: #666; }
+    
+    .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    
+    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .search-bar input { flex: 1; }
+    .search-bar button { padding: 10px 16px; }
+    
+    .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(0,0,0,0.75); color: white; padding: 12px 24px; border-radius: 24px; font-size: 14px; z-index: 2000; transition: transform 0.3s; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat-item { background: white; border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #1677ff; }
+    .stat-label { font-size: 12px; color: #999; margin-top: 4px; }
+    
+    .history-item { padding: 12px; border-bottom: 1px solid #f0f0f0; }
+    .history-item:last-child { border-bottom: none; }
+    .history-title { font-size: 14px; font-weight: 500; color: #333; }
+    .history-meta { font-size: 12px; color: #999; margin-top: 4px; }
+    
+    .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-label { font-size: 14px; color: #333; }
+    .setting-desc { font-size: 12px; color: #999; }
+    .setting-input { width: 70%; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📦 物资借用归还管理</h1>
+    <p>企业内部物资管理系统</p>
+  </div>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="home">🏠 首页</div>
+    <div class="tab" data-tab="borrow">📝 借用</div>
+    <div class="tab" data-tab="my">👤 我的</div>
+    <div class="tab" data-tab="admin">⚙️ 管理</div>
+  </div>
+  
+  <div class="content">
+    <!-- 首页 -->
+    <div class="page active" id="page-home">
+      <div class="stats">
+        <div class="stat-item"><div class="stat-value" id="stat-available">-</div><div class="stat-label">可用设备</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-borrowed">-</div><div class="stat-label">已借出</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-damaged">-</div><div class="stat-label">损坏</div></div>
+      </div>
+      <div id="goods-list"></div>
+    </div>
+    
+    <!-- 借用页面 -->
+    <div class="page" id="page-borrow">
+      <div class="search-bar">
+        <input type="text" class="form-input" id="search-borrow" placeholder="搜索设备名称或编号...">
+        <button class="btn btn-outline" onclick="loadGoods()">搜索</button>
+      </div>
+      <div id="borrow-goods-list"></div>
+    </div>
+    
+    <!-- 我的记录 -->
+    <div class="page" id="page-my">
+      <div class="search-bar">
+        <input type="text" class="form-input" id="search-my-name" placeholder="输入姓名搜索">
+        <input type="text" class="form-input" id="search-my-phone" placeholder="输入电话搜索">
+        <button class="btn btn-outline" onclick="loadMyRecords()">搜索</button>
+      </div>
+      <div id="my-records-list"></div>
+    </div>
+    
+    <!-- 管理页面 -->
+    <div class="page" id="page-admin">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🔔 钉钉群机器人配置</div></div>
+        <div class="form-group">
+          <label class="form-label">Webhook 地址</label>
+          <input type="text" class="form-input" id="webhook-input" placeholder="输入钉钉群机器人 Webhook 地址">
+          <p style="font-size:12px;color:#999;margin-top:6px;">在钉钉群设置中添加"自定义机器人"，复制 Webhook 地址粘贴到这里</p>
+        </div>
+        <button class="btn btn-primary" onclick="saveWebhook()">保存配置</button>
+      </div>
+      
+      <div class="card">
+        <div class="card-header"><div class="card-title">👥 审批人管理</div></div>
+        <div id="approvers-list"></div>
+        <div class="form-group" style="margin-top:12px;">
+          <input type="text" class="form-input" id="new-approver-name" placeholder="新增审批人姓名">
+        </div>
+        <button class="btn btn-outline" onclick="addApprover()">添加审批人</button>
+      </div>
+      
+      <div class="card">
+        <div class="card-header"><div class="card-title">📤 数据导出</div></div>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="exportBorrow()">导出借用记录</button>
+          <button class="btn btn-outline" onclick="exportReturn()">导出归还记录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 借用申请弹窗 -->
+  <div class="modal-overlay" id="modal-borrow">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📝 借用申请</div>
+        <div class="modal-close" onclick="closeModal('borrow')">×</div>
+      </div>
+      <input type="hidden" id="borrow-goods-id">
+      <div class="form-group">
+        <label class="form-label required">设备名称</label>
+        <input type="text" class="form-input" id="borrow-goods-name" disabled>
+      </div>
+      <div class="form-group">
+        <label class="form-label required">借用人姓名</label>
+        <input type="text" class="form-input" id="borrow-name" placeholder="请输入姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label required">联系电话</label>
+        <input type="tel" class="form-input" id="borrow-phone" placeholder="请输入手机号">
+      </div>
+      <div class="form-group">
+        <label class="form-label required">借用单位</label>
+        <input type="text" class="form-input" id="borrow-unit" placeholder="请输入单位名称">
+      </div>
+      <div class="form-group">
+        <label class="form-label required">预计归还时间</label>
+        <input type="date" class="form-input" id="borrow-return-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="borrow-remark" placeholder="可输入借用原因等"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">设备图片</label>
+        <div class="file-upload" onclick="document.getElementById('borrow-image-file').click()">
+          <input type="file" id="borrow-image-file" accept="image/*" onchange="previewImage(this, 'borrow-image-preview')">
+          <div id="borrow-image-preview-text">📷 点击上传设备图片</div>
+          <img id="borrow-image-preview" class="file-upload-preview" style="display:none;">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label required">选择审批人（任意一人审批）</label>
+        <div class="checkbox-group" id="borrow-approvers"></div>
+      </div>
+      <button class="btn btn-primary" onclick="submitBorrow()">提交申请</button>
+    </div>
+  </div>
+  
+  <!-- 归还申请弹窗 -->
+  <div class="modal-overlay" id="modal-return">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📦 申请归还</div>
+        <div class="modal-close" onclick="closeModal('return')">×</div>
+      </div>
+      <input type="hidden" id="return-borrow-id">
+      <input type="hidden" id="return-goods-id">
+      <div class="form-group">
+        <label class="form-label required">设备名称</label>
+        <input type="text" class="form-input" id="return-goods-name" disabled>
+      </div>
+      <div class="form-group">
+        <label class="form-label">是否损坏</label>
+        <div class="checkbox-group">
+          <label class="checkbox-item" onclick="toggleCheckbox(this)">
+            <input type="checkbox" id="return-damaged"> ⚠️ 设备损坏
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="return-remark" placeholder="请输入备注信息"></textarea>
+      </div>
+      <button class="btn btn-success" onclick="submitReturn()">提交归还</button>
+    </div>
+  </div>
+  
+  <!-- 审批弹窗 -->
+  <div class="modal-overlay" id="modal-approve">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">✅ 审批</div>
+        <div class="modal-close" onclick="closeModal('approve')">×</div>
+      </div>
+      <input type="hidden" id="approve-id">
+      <input type="hidden" id="approve-type">
+      <div class="form-group">
+        <label class="form-label required">审批人姓名</label>
+        <input type="text" class="form-input" id="approve-name" placeholder="请输入您的姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="approve-remark" placeholder="可输入审批意见"></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="submitApprove()">✅ 通过</button>
+        <button class="btn btn-danger" onclick="submitReject()">❌ 拒绝</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 审批列表弹窗 -->
+  <div class="modal-overlay" id="modal-pending">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📋 待审批列表</div>
+        <div class="modal-close" onclick="closeModal('pending')">×</div>
+      </div>
+      <div id="pending-list"></div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API_BASE = window.location.protocol + '//' + window.location.host;
+    let goods = [];
+    let approvers = [];
+    
+    // Toast提示
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+    
+    // Tab切换
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('page-' + tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'home') loadGoods();
+        if (tab.dataset.tab === 'my') loadMyRecords();
+        if (tab.dataset.tab === 'admin') { loadApprovers(); loadWebhook(); }
+        if (tab.dataset.tab === 'borrow') loadGoods();
+      });
+    });
+    
+    // 加载设备列表
+    async function loadGoods() {
+      try {
+        const keyword = document.getElementById('search-borrow')?.value || '';
+        const res = await fetch(API_BASE + '/api/goods');
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        goods = json.data;
+        const filtered = goods.filter(g => 
+          g.name.includes(keyword) || g.code.includes(keyword)
+        );
+        
+        renderGoods(filtered);
+        renderStats();
+      } catch (err) {
+        showToast('加载失败: ' + err.message);
+      }
+    }
+    
+    function renderStats() {
+      const available = goods.filter(g => g.status === '可用').length;
+      const borrowed = goods.filter(g => g.status === '已借出').length;
+      const damaged = goods.filter(g => g.status === '损坏').length;
+      document.getElementById('stat-available').textContent = available;
+      document.getElementById('stat-borrowed').textContent = borrowed;
+      document.getElementById('stat-damaged').textContent = damaged;
+    }
+    
+    function renderGoods(list) {
+      const container = document.getElementById('goods-list') || document.getElementById('borrow-goods-list');
+      if (!list.length) {
+        container.innerHTML = '<div class="empty"><div class="empty-icon">📦</div>暂无设备</div>';
+        return;
+      }
+      
+      container.innerHTML = list.map(g => {
+        const isBorrowed = g.status === '已借出';
+        const isDamaged = g.status === '损坏';
+        const canBorrow = isBorrowed || isDamaged;
+        
+        return `<div class="card">
+          <div class="card-header">
+            <div class="card-title">${g.name}</div>
+            <span class="card-badge badge-${g.status === '可用' ? 'available' : g.status === '已借出' ? 'borrowed' : 'damaged'}">${g.status}</span>
+          </div>
+          <div class="card-info">
+            <div>编号：<span>${g.code}</span></div>
+            ${g.remark ? `<div>备注：<span>${g.remark}</span></div>` : ''}
+          </div>
+          ${g.image ? `<img src="${g.image}" class="card-image">` : ''}
+          <div class="btn-group">
+            ${!canBorrow ? `<button class="btn btn-primary" onclick="openBorrowModal('${g.id}')">📝 借用</button>` : ''}
+            ${isBorrowed ? `<button class="btn btn-success" onclick="openReturnModal('${g.id}')">📦 归还</button>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+    
+    // 打开借用弹窗
+    async function openBorrowModal(goodsId) {
+      const good = goods.find(g => g.id === goodsId);
+      if (!good) return;
+      
+      document.getElementById('borrow-goods-id').value = goodsId;
+      document.getElementById('borrow-goods-name').value = good.name;
+      document.getElementById('borrow-name').value = '';
+      document.getElementById('borrow-phone').value = '';
+      document.getElementById('borrow-unit').value = '';
+      document.getElementById('borrow-return-date').value = '';
+      document.getElementById('borrow-remark').value = '';
+      document.getElementById('borrow-image-preview').style.display = 'none';
+      document.getElementById('borrow-image-preview-text').style.display = 'block';
+      document.getElementById('borrow-image-file').value = '';
+      
+      // 加载审批人
+      if (!approvers.length) await loadApprovers();
+      renderApprovers();
+      
+      openModal('borrow');
+    }
+    
+    function renderApprovers() {
+      const container = document.getElementById('borrow-approvers');
+      container.innerHTML = approvers.map(a => `
+        <label class="checkbox-item" onclick="toggleCheckbox(this)">
+          <input type="checkbox" value="${a.name}"> ${a.name}
+        </label>
+      `).join('');
+    }
+    
+    function toggleCheckbox(el) {
+      const checkbox = el.querySelector('input[type="checkbox"]');
+      const isMultiSelect = el.closest('.checkbox-group')?.querySelectorAll('input[type="checkbox"]').length > 1;
+      
+      if (!isMultiSelect) {
+        el.closest('.checkbox-group').querySelectorAll('.checkbox-item').forEach(item => {
+          item.classList.remove('checked');
+          item.querySelector('input').checked = false;
+        });
+      }
+      
+      checkbox.checked = !checkbox.checked;
+      el.classList.toggle('checked', checkbox.checked);
+    }
+    
+    // 提交借用
+    async function submitBorrow() {
+      const goodsId = document.getElementById('borrow-goods-id').value;
+      const borrowerName = document.getElementById('borrow-name').value.trim();
+      const borrowerPhone = document.getElementById('borrow-phone').value.trim();
+      const borrowerUnit = document.getElementById('borrow-unit').value.trim();
+      const expectReturnTime = document.getElementById('borrow-return-date').value;
+      const remark = document.getElementById('borrow-remark').value.trim();
+      
+      if (!borrowerName || !borrowerPhone || !borrowerUnit || !expectReturnTime) {
+        return showToast('请填写必填项');
+      }
+      
+      const selectedApprovers = [...document.querySelectorAll('#borrow-approvers input:checked')].map(i => i.value);
+      if (!selectedApprovers.length) {
+        return showToast('请选择至少一个审批人');
+      }
+      
+      let image = '';
+      const fileInput = document.getElementById('borrow-image-file');
+      if (fileInput.files[0]) {
+        const uploadRes = await uploadFile(fileInput.files[0]);
+        if (uploadRes.success) image = uploadRes.data.url;
+      }
+      
+      try {
+        const res = await fetch(API_BASE + '/api/borrow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ goods_id: goodsId, borrower_name: borrowerName, borrower_phone: borrowerPhone, borrower_unit: borrowerUnit, expect_return_time: expectReturnTime, remark, image, approvers: selectedApprovers })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        showToast('✅ 借用申请已提交');
+        closeModal('borrow');
+        loadGoods();
+      } catch (err) {
+        showToast('提交失败: ' + err.message);
+      }
+    }
+    
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(API_BASE + '/api/upload', { method: 'POST', body: formData });
+      return res.json();
+    }
+    
+    function previewImage(input, previewId) {
+      const preview = document.getElementById(previewId);
+      const text = document.getElementById(previewId + '-text');
+      if (input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+          if (text) text.style.display = 'none';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+    
+    // 打开归还弹窗
+    async function openReturnModal(goodsId) {
+      const good = goods.find(g => g.id === goodsId);
+      if (!good) return;
+      
+      const res = await fetch(API_BASE + '/api/borrow?goods_id=' + goodsId + '&status=借用中');
+      const json = await res.json();
+      const borrowRecord = json.data?.[0];
+      
+      if (!borrowRecord) return showToast('未找到借用记录');
+      
+      document.getElementById('return-borrow-id').value = borrowRecord.id;
+      document.getElementById('return-goods-id').value = goodsId;
+      document.getElementById('return-goods-name').value = good.name;
+      document.getElementById('return-damaged').checked = false;
+      document.getElementById('return-remark').value = '';
+      
+      openModal('return');
+    }
+    
+    async function submitReturn() {
+      const borrowId = document.getElementById('return-borrow-id').value;
+      const isDamaged = document.getElementById('return-damaged').checked;
+      const remark = document.getElementById('return-remark').value.trim();
+      
+      try {
+        const res = await fetch(API_BASE + '/api/return', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ borrow_id: borrowId, is_damaged: isDamaged, remark })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        showToast('✅ 归还申请已提交');
+        closeModal('return');
+        loadGoods();
+      } catch (err) {
+        showToast('提交失败: ' + err.message);
+      }
+    }
+    
+    // 我的记录
+    async function loadMyRecords() {
+      const name = document.getElementById('search-my-name')?.value?.trim() || '';
+      const phone = document.getElementById('search-my-phone')?.value?.trim() || '';
+      
+      if (!name && !phone) return showToast('请输入姓名或电话');
+      
+      try {
+        const res = await fetch(API_BASE + '/api/borrow/my?name=' + name + '&phone=' + phone);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        const container = document.getElementById('my-records-list');
+        if (!json.data.length) {
+          container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>暂无记录</div>';
+          return;
+        }
+        
+        container.innerHTML = json.data.map(r => `
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">${r.goods_name}</div>
+              <span class="card-badge badge-${r.status === '借用中' ? 'borrowed' : r.status === '已归还' ? 'available' : 'pending'}">${r.status}</span>
+            </div>
+            <div class="card-info">
+              <div>设备编号：<span>${r.goods_code}</span></div>
+              <div>借用时间：<span>${r.borrow_time}</span></div>
+              <div>预计归还：<span>${r.expect_return_time}</span></div>
+              ${r.remark ? `<div>备注：<span>${r.remark}</span></div>` : ''}
+            </div>
+            ${r.image ? `<img src="${r.image}" class="card-image">` : ''}
+          </div>
+        `).join('');
+      } catch (err) {
+        showToast('加载失败: ' + err.message);
+      }
+    }
+    
+    // 审批相关
+    async function loadPendingApprovals() {
+      try {
+        const res = await fetch(API_BASE + '/api/borrow?status=审批中');
+        const json = await res.json();
+        const container = document.getElementById('pending-list');
+        
+        if (!json.data.length) {
+          container.innerHTML = '<div class="empty"><div class="empty-icon">✅</div>暂无待审批项</div>';
+          openModal('pending');
+          return;
+        }
+        
+        container.innerHTML = json.data.map(r => `
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">${r.borrower_name} 的借用申请</div>
+            </div>
+            <div class="card-info">
+              <div>设备：<span>${r.goods_id}</span></div>
+              <div>电话：<span>${r.borrower_phone}</span></div>
+              <div>单位：<span>${r.borrower_unit}</span></div>
+              <div>预计归还：<span>${r.expect_return_time}</span></div>
+              ${r.remark ? `<div>备注：<span>${r.remark}</span></div>` : ''}
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-success" onclick="openApproveModal('borrow', '${r.id}')">✅ 通过</button>
+              <button class="btn btn-danger" onclick="openRejectModal('borrow', '${r.id}')">❌ 拒绝</button>
+            </div>
+          </div>
+        `).join('');
+        
+        openModal('pending');
+      } catch (err) {
+        showToast('加载失败: ' + err.message);
+      }
+    }
+    
+    function openApproveModal(type, id) {
+      closeModal('pending');
+      document.getElementById('approve-type').value = type;
+      document.getElementById('approve-id').value = id;
+      document.getElementById('approve-name').value = '';
+      document.getElementById('approve-remark').value = '';
+      openModal('approve');
+    }
+    
+    function openRejectModal(type, id) {
+      openApproveModal(type, id);
+    }
+    
+    async function submitApprove() {
+      const type = document.getElementById('approve-type').value;
+      const id = document.getElementById('approve-id').value;
+      const approverName = document.getElementById('approve-name').value.trim();
+      
+      if (!approverName) return showToast('请输入审批人姓名');
+      
+      try {
+        const res = await fetch(API_BASE + '/api/' + type + '/' + id + '/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approver_name: approverName })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        showToast('✅ 审批通过');
+        closeModal('approve');
+        loadGoods();
+      } catch (err) {
+        showToast('审批失败: ' + err.message);
+      }
+    }
+    
+    async function submitReject() {
+      const type = document.getElementById('approve-type').value;
+      const id = document.getElementById('approve-id').value;
+      const approverName = document.getElementById('approve-name').value.trim();
+      
+      if (!approverName) return showToast('请输入审批人姓名');
+      
+      try {
+        const res = await fetch(API_BASE + '/api/' + type + '/' + id + '/reject', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approver_name: approverName })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        showToast('❌ 已拒绝');
+        closeModal('approve');
+        loadGoods();
+      } catch (err) {
+        showToast('操作失败: ' + err.message);
+      }
+    }
+    
+    // 管理页面
+    async function loadApprovers() {
+      try {
+        const res = await fetch(API_BASE + '/api/approvers');
+        const json = await res.json();
+        approvers = json.data || [];
+        renderApproversList();
+      } catch (err) {
+        showToast('加载审批人失败');
+      }
+    }
+    
+    function renderApproversList() {
+      const container = document.getElementById('approvers-list');
+      container.innerHTML = approvers.map(a => `
+        <div class="setting-item">
+          <div>
+            <div class="setting-label">${a.name}</div>
+          </div>
+          <button class="btn btn-danger" style="width:auto;padding:6px 12px;" onclick="deleteApprover('${a.id}')">删除</button>
+        </div>
+      `).join('') || '<div class="empty">暂无审批人</div>';
+    }
+    
+    async function addApprover() {
+      const name = document.getElementById('new-approver-name').value.trim();
+      if (!name) return showToast('请输入姓名');
+      
+      try {
+        const res = await fetch(API_BASE + '/api/approvers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        
+        showToast('✅ 添加成功');
+        document.getElementById('new-approver-name').value = '';
+        loadApprovers();
+      } catch (err) {
+        showToast('添加失败: ' + err.message);
+      }
+    }
+    
+    async function deleteApprover(id) {
+      if (!confirm('确定删除？')) return;
+      try {
+        const res = await fetch(API_BASE + '/api/approvers/' + id, { method: 'DELETE' });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        showToast('✅ 已删除');
+        loadApprovers();
+      } catch (err) {
+        showToast('删除失败: ' + err.message);
+      }
+    }
+    
+    async function loadWebhook() {
+      try {
+        const res = await fetch(API_BASE + '/api/settings/webhook');
+        const json = await res.json();
+        document.getElementById('webhook-input').value = json.data || '';
+      } catch (err) {}
+    }
+    
+    async function saveWebhook() {
+      const webhook = document.getElementById('webhook-input').value.trim();
+      try {
+        const res = await fetch(API_BASE + '/api/settings/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ webhook })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message);
+        showToast('✅ Webhook配置已保存');
+      } catch (err) {
+        showToast('保存失败: ' + err.message);
+      }
+    }
+    
+    function exportBorrow() {
+      window.location.href = API_BASE + '/api/export/borrow';
+    }
+    
+    function exportReturn() {
+      window.location.href = API_BASE + '/api/export/return';
+    }
+    
+    // Modal控制
+    function openModal(name) {
+      document.getElementById('modal-' + name).classList.add('active');
+    }
+    
+    function closeModal(name) {
+      document.getElementById('modal-' + name).classList.remove('active');
+    }
+    
+    // 点击外部关闭
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) overlay.classList.remove('active');
+      });
+    });
+    
+    // 初始化
+    loadGoods();
+  </script>
+</body>
+</html>
